@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { ServerHistory } from '@/types/server';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Activity } from 'lucide-react';
 
 interface UptimeIndicatorProps {
   uptimeHistory: ServerHistory[];
@@ -8,14 +9,19 @@ interface UptimeIndicatorProps {
 }
 
 export const UptimeIndicator = ({ uptimeHistory, isOnline }: UptimeIndicatorProps) => {
+  // Get the last 30 entries for quick view
+  const recentHistory = uptimeHistory.slice(-30);
+  
   // Fill empty slots with placeholder data if we don't have 30 entries yet
-  const displayData = [...uptimeHistory];
+  const displayData = [...recentHistory];
   while (displayData.length < 30) {
-    displayData.unshift({ timestamp: new Date(), status: 'online', players: 0 });
+    displayData.unshift({ timestamp: new Date(), status: 'online' as const, players: 0 });
   }
 
-  const onlineCount = displayData.filter(entry => entry.status === 'online').length;
-  const uptimePercentage = ((onlineCount / displayData.length) * 100).toFixed(1);
+  const onlineCount = recentHistory.filter(entry => entry.status === 'online').length;
+  const uptimePercentage = recentHistory.length > 0 
+    ? ((onlineCount / recentHistory.length) * 100).toFixed(1) 
+    : '100.0';
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -24,9 +30,12 @@ export const UptimeIndicator = ({ uptimeHistory, isOnline }: UptimeIndicatorProp
   return (
     <div className="minecraft-border rounded-xl bg-card p-6 card-glow">
       <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-lg font-bold text-foreground">Uptime History</h3>
-          <p className="text-xs text-muted-foreground">Last 30 checks (every 10 seconds)</p>
+        <div className="flex items-center gap-3">
+          <Activity className="w-6 h-6 text-primary" />
+          <div>
+            <h3 className="text-lg font-bold text-foreground">Live Status</h3>
+            <p className="text-xs text-muted-foreground">Last 30 checks (every 10 seconds)</p>
+          </div>
         </div>
         <div className="text-right">
           <span className={cn(

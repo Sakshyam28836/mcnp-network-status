@@ -4,6 +4,36 @@ import { ServerStatus, StatusType, ServerHistory } from '@/types/server';
 const JAVA_API_URL = 'https://api.mcsrvstat.us/3/play.mcnpnetwork.com';
 const BEDROCK_API_URL = 'https://api.mcsrvstat.us/bedrock/3/play.mcnpnetwork.com:8188';
 
+// Local storage keys for persistent history
+const STORAGE_KEY_HISTORY = 'mcnp_uptime_history';
+
+const loadStoredHistory = (): ServerHistory[] => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_HISTORY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed.map((entry: { timestamp: string; status: 'online' | 'offline'; players?: number }) => ({
+        ...entry,
+        timestamp: new Date(entry.timestamp)
+      }));
+    }
+  } catch {
+    console.log('No stored history found');
+  }
+  return [];
+};
+
+const saveHistory = (history: ServerHistory[]) => {
+  try {
+    // Keep last 24 hours worth of data (8640 entries at 10 second intervals)
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const filtered = history.filter(entry => entry.timestamp > cutoff);
+    localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(filtered.slice(-8640)));
+  } catch {
+    console.log('Failed to save history');
+  }
+};
+
 export const useServerStatus = (refreshInterval = 10000) => {
   const [javaStatus, setJavaStatus] = useState<ServerStatus | null>(null);
   const [bedrockStatus, setBedrockStatus] = useState<ServerStatus | null>(null);
@@ -11,19 +41,42 @@ export const useServerStatus = (refreshInterval = 10000) => {
   const [lastChecked, setLastChecked] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [uptimeHistory, setUptimeHistory] = useState<ServerHistory[]>([]);
+  const [uptimeHistory, setUptimeHistory] = useState<ServerHistory[]>(loadStoredHistory);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const previousStatus = useRef<StatusType>('checking');
   const isFirstFetch = useRef(true);
 
-  const fetchStatus = useCallback(async () => {
-    if (!isFirstFetch.current) {
-      setIsLoading(false);
+  // Request notification permission
+  const enableNotifications = useCallback(async () => {
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission();
+      setNotificationsEnabled(permission === 'granted');
+      return permission === 'granted';
     }
+    return false;
+  }, []);
 
+  // Send notification
+  const sendNotification = useCallback((title: string, body: string) => {
+    if (notificationsEnabled && 'Notification' in window) {
+      new Notification(title, {
+        body,
+        icon: '/favicon.png',
+        badge: '/favicon.png',
+      });
+    }
+  }, [notificationsEnabled]);
+
+  const fetchStatus = useCallback(async () => {
     try {
       const [javaResponse, bedrockResponse] = await Promise.all([
-        fetch(JAVA_API_URL),
-        fetch(BEDROCK_API_URL)
+        fetch(JAVA_API_URL, { cache: 'no-store' }),
+        fetch(BEDROCK_API_URL, { cache: 'no-store' })
       ]);
+
+      if (!javaResponse.ok || !bedrockResponse.ok) {
+        throw new Error('API request failed');
+      }
 
       const javaData = await javaResponse.json();
       const bedrockData = await bedrockResponse.json();
@@ -33,8 +86,19 @@ export const useServerStatus = (refreshInterval = 10000) => {
       
       const isOnline = javaData.online || bedrockData.online;
       const totalPlayers = (javaData.players?.online || 0) + (bedrockData.players?.online || 0);
+      const newStatus: StatusType = isOnline ? 'online' : 'offline';
       
-      setStatus(isOnline ? 'online' : 'offline');
+      // Check for status change and send notification
+      if (!isFirstFetch.current && previousStatus.current !== 'checking' && previousStatus.current !== newStatus) {
+        if (newStatus === 'online') {
+          sendNotification('🟢 MCNP Network is Online!', 'The server is now online. Join now!');
+        } else {
+          sendNotification('🔴 MCNP Network is Offline', 'The server has gone offline.');
+        }
+      }
+      
+      previousStatus.current = newStatus;
+      setStatus(newStatus);
       setLastChecked(new Date());
       
       // Update uptime history
@@ -44,29 +108,43 @@ export const useServerStatus = (refreshInterval = 10000) => {
           status: isOnline ? 'online' : 'offline',
           players: totalPlayers
         };
-        const updated = [...prev, newEntry].slice(-30); // Keep last 30 entries
+        const updated = [...prev, newEntry];
+        saveHistory(updated);
         return updated;
       });
 
       setError(null);
     } catch (err) {
+      console.error('Failed to fetch server status:', err);
       setError('Failed to fetch server status');
-      setStatus('offline');
+      
+      // Don't change status on network error, keep previous
+      if (isFirstFetch.current) {
+        setStatus('offline');
+      }
+      
       setUptimeHistory(prev => {
         const newEntry: ServerHistory = {
           timestamp: new Date(),
           status: 'offline',
           players: 0
         };
-        return [...prev, newEntry].slice(-30);
+        const updated = [...prev, newEntry];
+        saveHistory(updated);
+        return updated;
       });
     } finally {
       setIsLoading(false);
       isFirstFetch.current = false;
     }
-  }, []);
+  }, [sendNotification]);
 
   useEffect(() => {
+    // Check if notifications are already granted
+    if ('Notification' in window && Notification.permission === 'granted') {
+      setNotificationsEnabled(true);
+    }
+
     fetchStatus();
     const interval = setInterval(fetchStatus, refreshInterval);
     return () => clearInterval(interval);
@@ -80,6 +158,8 @@ export const useServerStatus = (refreshInterval = 10000) => {
     isLoading,
     error,
     uptimeHistory,
+    notificationsEnabled,
+    enableNotifications,
     refetch: fetchStatus
   };
 };
