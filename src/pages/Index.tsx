@@ -3,6 +3,9 @@ import { Header } from '@/components/Header';
 import { ServerCard } from '@/components/ServerCard';
 import { StatsCard } from '@/components/StatsCard';
 import { UptimeIndicator } from '@/components/UptimeIndicator';
+import { UptimeChart } from '@/components/UptimeChart';
+import { PlayerList } from '@/components/PlayerList';
+import { DiscordWidget } from '@/components/DiscordWidget';
 import { GameModeNav } from '@/components/GameModeNav';
 import { Users, Clock, Wifi, Activity } from 'lucide-react';
 
@@ -14,6 +17,8 @@ const Index = () => {
     lastChecked, 
     isLoading, 
     uptimeHistory,
+    notificationsEnabled,
+    enableNotifications,
     refetch 
   } = useServerStatus(10000); // Check every 10 seconds
 
@@ -30,6 +35,8 @@ const Index = () => {
         lastChecked={lastChecked}
         onRefresh={refetch}
         isLoading={isLoading}
+        notificationsEnabled={notificationsEnabled}
+        onEnableNotifications={enableNotifications}
       />
 
       <main className="max-w-6xl mx-auto px-4 pb-12">
@@ -80,13 +87,24 @@ const Index = () => {
           />
         </section>
 
-        {/* Uptime */}
+        {/* Player List */}
+        <section className="mb-8">
+          <PlayerList javaStatus={javaStatus} bedrockStatus={bedrockStatus} />
+        </section>
+
+        {/* Live Status Indicator */}
         <section className="mb-8">
           <UptimeIndicator uptimeHistory={uptimeHistory} isOnline={status === 'online'} />
         </section>
 
-        {/* Game Modes */}
+        {/* Historical Uptime Chart */}
         <section className="mb-8">
+          <UptimeChart uptimeHistory={uptimeHistory} />
+        </section>
+
+        {/* Discord + Game Modes */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <DiscordWidget inviteLink="https://discord.gg/mcnpnetwork" />
           <GameModeNav />
         </section>
 

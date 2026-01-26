@@ -1,18 +1,28 @@
-import { RefreshCw, Server } from 'lucide-react';
+import { RefreshCw, Bell, BellOff } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { StatusType } from '@/types/server';
 import { cn } from '@/lib/utils';
+import mcnpLogo from '@/assets/mcnp-logo.png';
 
 interface HeaderProps {
   status: StatusType;
   lastChecked: Date;
   onRefresh: () => void;
   isLoading: boolean;
+  notificationsEnabled: boolean;
+  onEnableNotifications: () => void;
 }
 
-export const Header = ({ status, lastChecked, onRefresh, isLoading }: HeaderProps) => {
+export const Header = ({ 
+  status, 
+  lastChecked, 
+  onRefresh, 
+  isLoading, 
+  notificationsEnabled,
+  onEnableNotifications 
+}: HeaderProps) => {
   return (
-    <header className="relative py-12 px-4 overflow-hidden">
+    <header className="relative py-8 px-4 overflow-hidden">
       {/* Background glow effect */}
       <div 
         className={cn(
@@ -24,19 +34,19 @@ export const Header = ({ status, lastChecked, onRefresh, isLoading }: HeaderProp
       />
       
       <div className="relative max-w-4xl mx-auto text-center">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <Server className="w-10 h-10 text-primary animate-float" />
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight">
-            <span className="text-gradient">MCNP</span>
-            <span className="text-foreground"> Network</span>
-          </h1>
+        <div className="flex items-center justify-center mb-4">
+          <img 
+            src={mcnpLogo} 
+            alt="MCNP Network" 
+            className="h-24 md:h-32 object-contain animate-float"
+          />
         </div>
         
         <p className="text-muted-foreground text-lg mb-6">
           Real-time Minecraft Server Status
         </p>
 
-        <div className="flex flex-wrap items-center justify-center gap-4">
+        <div className="flex flex-wrap items-center justify-center gap-3">
           <StatusBadge status={status} />
           
           <button
@@ -47,10 +57,32 @@ export const Header = ({ status, lastChecked, onRefresh, isLoading }: HeaderProp
             <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
             Refresh
           </button>
+
+          <button
+            onClick={onEnableNotifications}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
+              notificationsEnabled 
+                ? "bg-success/20 text-success border border-success/30" 
+                : "bg-secondary hover:bg-secondary/80 text-foreground"
+            )}
+          >
+            {notificationsEnabled ? (
+              <>
+                <Bell className="w-4 h-4" />
+                Alerts On
+              </>
+            ) : (
+              <>
+                <BellOff className="w-4 h-4" />
+                Enable Alerts
+              </>
+            )}
+          </button>
         </div>
 
         <p className="text-muted-foreground text-xs mt-4">
-          Last checked: {lastChecked.toLocaleTimeString()}
+          Last checked: {lastChecked.toLocaleTimeString()} • Auto-updates every 10s
         </p>
       </div>
     </header>
