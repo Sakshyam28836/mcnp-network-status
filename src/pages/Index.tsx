@@ -66,7 +66,7 @@ const Index = () => {
             icon={Clock}
             label="Bedrock Edition"
             value={bedrockStatus?.online ? 'Online' : 'Offline'}
-            subtext="Port: 8188"
+            subtext="Port: 1109"
             variant={bedrockStatus?.online ? 'success' : 'destructive'}
           />
         </section>
