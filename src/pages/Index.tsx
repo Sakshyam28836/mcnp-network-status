@@ -82,7 +82,7 @@ const Index = () => {
           <ServerCard
             title="Bedrock Edition"
             serverData={bedrockStatus}
-            serverAddress="play.mcnpnetwork.com:8188"
+            serverAddress="bedrock.mcnpnetwork.com:1109"
             isLoading={isLoading}
           />
         </section>
@@ -104,7 +104,7 @@ const Index = () => {
 
         {/* Discord + Game Modes */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <DiscordWidget inviteLink="https://discord.gg/mcnpnetwork" />
+          <DiscordWidget inviteLink="https://discord.gg/mcnp" />
           <GameModeNav />
         </section>
 
